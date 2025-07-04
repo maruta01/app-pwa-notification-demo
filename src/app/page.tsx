@@ -1,95 +1,118 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [notificationPermission, setNotificationPermission] = useState('default');
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // ใช้ useRef เพื่อเก็บ interval ID จะไม่ทำให้ re-render ที่ไม่จำเป็น
+  const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const [isIntervalRunning, setIsIntervalRunning] = useState(false);
+
+  // ตรวจสอบสถานะการอนุญาตเมื่อโหลดหน้า
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+
+    // Cleanup function: จะทำงานเมื่อ component ถูก unmount (ออกจากหน้า)
+    // เพื่อให้แน่ใจว่า interval จะถูกล้างออกไปเสมอ
+    return () => {
+      if (intervalIdRef.current) {
+        clearInterval(intervalIdRef.current);
+      }
+    };
+  }, []);
+
+  // ฟังก์ชันขออนุญาตแสดง Notification
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+  };
+
+  // ฟังก์ชันแสดง Notification ทันที
+  const showNotification = () => {
+    if (notificationPermission !== 'granted') {
+      alert('โปรดอนุญาตการแจ้งเตือนก่อน!');
+      return;
+    }
+    new Notification('สวัสดีจาก PWA! 👋', {
+      body: 'นี่คือการแจ้งเตือนตัวอย่างจาก James Test App Alert',
+      icon: '/icons/icon-192x192.png',
+    });
+  };
+
+  // --- ฟังก์ชันใหม่: เริ่มการแจ้งเตือนทุก 1 นาที ---
+  const startMinuteAlerts = () => {
+    if (intervalIdRef.current) {
+      alert('การแจ้งเตือนทุกนาทีกำลังทำงานอยู่แล้ว');
+      return;
+    }
+    setIsIntervalRunning(true);
+
+    // ตั้งค่าให้ alert ทำงานทุก 60,000 มิลลิวินาที (1 นาที)
+    intervalIdRef.current = setInterval(() => {
+      // alert('ครบ 1 นาทีแล้ว!');
+      showNotification();
+      // หรือจะใช้ Notification ก็ได้ ถ้าได้รับอนุญาตแล้ว
+      // if (Notification.permission === 'granted') {
+      //   new Notification('ครบ 1 นาทีแล้ว!', { body: 'ถึงเวลาแจ้งเตือนตามกำหนด' });
+      // }
+    }, 60000);
+  };
+
+  // --- ฟังก์ชันใหม่: หยุดการแจ้งเตือน ---
+  const stopMinuteAlerts = () => {
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+      setIsIntervalRunning(false);
+      alert('หยุดการแจ้งเตือนทุกนาทีแล้ว');
+    }
+  };
+
+  return (
+    <main className="main">
+      <div className="container">
+        <h1>PWA Notification & Interval Test</h1>
+        <p>
+          สถานะการอนุญาต: <strong>{notificationPermission}</strong>
+        </p>
+
+        {/* ส่วนของการแจ้งเตือนแบบปกติ */}
+        <div className="button-group">
+          <button
+            onClick={requestNotificationPermission}
+            disabled={notificationPermission !== 'default'}
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
+            1. ขออนุญาต
+          </button>
+          <button
+            onClick={showNotification}
+            disabled={notificationPermission !== 'granted'}
           >
-            Read our docs
-          </a>
+            2. แสดง Notification ทันที
+          </button>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <hr style={{ margin: '2rem 0', border: '1px solid #eee' }} />
+
+        {/* ส่วนของการแจ้งเตือนทุกนาที */}
+        <h2>ตั้งเตือนทุก 1 นาที</h2>
+        <div className="button-group">
+          <button onClick={startMinuteAlerts} disabled={isIntervalRunning}>
+            เริ่มเตือนทุกนาที
+          </button>
+          <button onClick={stopMinuteAlerts} disabled={!isIntervalRunning}>
+            หยุดการเตือน
+          </button>
+        </div>
+        {isIntervalRunning && <p style={{ marginTop: '1rem', color: 'green' }}>การแจ้งเตือนกำลังทำงาน...</p>}
+      </div>
+    </main>
   );
 }
